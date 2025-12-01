@@ -1,0 +1,7 @@
+arguments.txt
+history.txt
+Lecture Recordings
+*echo360.cookies
+
+*.DS_Store
+*__pycache__/
