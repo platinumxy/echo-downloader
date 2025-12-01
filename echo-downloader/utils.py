@@ -10,10 +10,10 @@ from colorama import Fore
 logger = logging.getLogger(__name__)
 
 
-REMOTE_URL = ""
-REMOTE_ISSUES_URL = REMOTE_URL + ""
-REMOTE_VERSION_URL = REMOTE_URL + ""
-VERSION = "2.0.7"
+REMOTE_URL = "https://github.com/platinumxy/echo-downloader"
+REMOTE_ISSUES_URL = REMOTE_URL + "/issues"
+REMOTE_VERSION_URL = REMOTE_URL + "/blob/main/VERSION"
+VERSION = "2.0.0"
 OUTPUT_IS_TTY = sys.stdout.isatty()
 
 class Colors:

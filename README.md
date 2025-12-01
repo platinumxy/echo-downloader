@@ -25,11 +25,11 @@ pip3 install requests tqdm selenium
 
 #### A:
 
-    `python3 echo-downloader <arguments> <course link(s)>`
+    python3 echo-downloader <arguments> <course link(s)>
 
 To see a list of possible arguments check
 
-    `python3 echo-downloader --help`
+    python3 echo-downloader --help
 
 **For courses that need EASE auth (most of them)**, the downloader will ask for your login credentials before downloading the video(s). The script does not store these credentials anywhere, and you can verify them yourself by peeking at the source code.
 
@@ -124,4 +124,4 @@ So what the downloader does is get the list of sessions from the course's metada
 
 ### Q: Can you fix *X*? Can you implement feature *Y*?
 
-#### A: Feel free to open an issue [here](). Merge requests are always welcome but subject to my own moderation.
+#### A: Feel free to open an issue [here](https://github.com/platinumxy/echo-downloader/issues). Merge requests are always welcome but subject to my own moderation.
