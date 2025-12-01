@@ -2,7 +2,7 @@
 
 A Python 3.7+ script for UoE students to download lecture videos from [echo360.org.uk](https://echo360.org.uk/).
 
-Multiple parts of this project's code is taken from ETH Zurich's [vo-scraper](https://gitlab.ethz.ch/tgeorg/vo-scraper/-/tree/master), which is released under the GNU GPLv3 license. The authentication code has also been adapted by [BetterInformatics](https://files.betterinformatics.com/).
+Multiple parts of this project's code is taken from ETH Zurich's [vo-scraper](https://gitlab.ethz.ch/tgeorg/vo-scraper/-/tree/master), which is released under the GNU GPLv3 license. The authentication code has also been adapted from [BetterInformatics](https://files.betterinformatics.com/).
 
 Many thanks to Yuto for their work on the project before the auth changes! 
 
@@ -31,7 +31,7 @@ To see a list of possible arguments check
 
     python3 echo-downloader --help
 
-**For courses that need EASE auth (most of them)**, the downloader will ask for your login credentials before downloading the video(s). The script does not store these credentials anywhere, and you can verify them yourself by peeking at the source code.
+**For courses that need you to be authenticated (most of them)**, the downloader will ask for your login credentials before downloading the video(s). The script does not store these credentials anywhere; It will give you the option to save and encrypt the echo360 cookies to minimize the need to re-login, you can verify this yourself by peeking at auth.py and seleinum_controler.py.
 
 ### Q: How can I choose which lecture of a course to download?
 
