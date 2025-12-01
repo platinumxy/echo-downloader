@@ -81,7 +81,7 @@ If you create a file called `arguments.txt` with the following content
 --verbose
 ```
 
-and then run `python3 echo360_downloader.py <some course link>` in that directory it will download all recordings (`--all`) from that course while spitting debug info to the console.
+and then run `python3 echo-downloader <some course link>` in that directory it will download all recordings (`--all`) from that course while spitting debug info to the console.
 
 If you want to use a different name for the parameter file, you can pass the parameter `--arguments-file <filename>`. Ironically, you cannot do this via `arguments.txt` :P
 
