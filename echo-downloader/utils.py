@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 REMOTE_URL = "https://github.com/platinumxy/echo-downloader"
 REMOTE_ISSUES_URL = REMOTE_URL + "/issues"
 REMOTE_VERSION_URL = "https://raw.githubusercontent.com/platinumxy/echo-downloader/refs/heads/main/VERSION"
-VERSION = "2.0.0"
+VERSION = open("VERSION").read().strip()
 OUTPUT_IS_TTY = sys.stdout.isatty()
 
 class Colors:
