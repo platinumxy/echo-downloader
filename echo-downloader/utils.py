@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 REMOTE_URL = "https://github.com/platinumxy/echo-downloader"
 REMOTE_ISSUES_URL = REMOTE_URL + "/issues"
-REMOTE_VERSION_URL = REMOTE_URL + "/blob/main/VERSION"
+REMOTE_VERSION_URL = "https://raw.githubusercontent.com/platinumxy/echo-downloader/refs/heads/main/VERSION"
 VERSION = "2.0.0"
 OUTPUT_IS_TTY = sys.stdout.isatty()
 
@@ -73,7 +73,7 @@ class Loader:
         cols = get_terminal_size((80, 20)).columns
         print("\r" + " " * cols, end="", flush=True)
         print(
-            f"\r{Fore.GREEN}✓{Fore.RESET} {self.desc} {Fore.GREEN}{end}{Fore.RESET}",
+            f"\r{self.desc} {Fore.GREEN}{end}{Fore.RESET}",
             flush=True,
         )
 

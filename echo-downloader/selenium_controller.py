@@ -34,9 +34,15 @@ def initialise_selenium(return_values: SeleniumLauncherReturnValues, ready: Even
     logger.debug("Initialising Selenium")
     try:
         d = make_driver()
-        d.get("https://www.myed.ed.ac.uk/uPortal/Login?refUrl=%2Fmyed-progressive%2")
+        url = "https://www.myed.ed.ac.uk/uPortal/Login?refUrl=%2Fmyed-progressive%2"
+        logger.debug(f"Navigating to {url}")
+        d.get(url)
+        logger.debug(f"Successfully loaded page, current URL: {d.current_url}")
+        logger.debug(f"Page title: {d.title}")
         return_values["driver"] = d
     except Exception as e:
+        logger.error(f"Failed during Selenium initialization: {e}")
+        logger.exception("Full traceback:")
         return_values["error"] = e
     finally:
         ready.set()
@@ -72,38 +78,45 @@ class TWO_FACTOR_TYPE(enum.Enum):
 def submit_validate_username_password(
     driver: WebDriver, username: str, password: str
 ) -> bool:
-    logger.info("Sending username & password")
+    logger.debug(f"Attempting to submit credentials for user: {username}")
     if not send_keys_if_present(driver, By.ID, "userNameInput", username + ("@ed.ac.uk" if "@" not in username else "")):
+        logger.warning("Could not find userNameInput field")
         return False
     if not send_keys_if_present(driver, By.ID, "passwordInput", password):
+        logger.warning("Could not find passwordInput field")
         return False
 
-    logger.debug("Clicking submission button")
     if not click_if_present(driver, By.ID, "submitButton"):
+        logger.warning("Could not find submitButton")
         return False
 
-    logger.debug("Waiting for incorrect response or correct response")
     if not wait_until_source_contains_any(
         driver,
         phrases=["lightboxTemplateContainer", "Incorrect user ID or password"],
         timeout=WAIT_SECONDS,
         poll_interval=0.5,
     ):
+        logger.warning("Timeout waiting for response after credential submission")
         return False
 
     if page_contains(driver, "Incorrect user ID or password"):
+        logger.error("Incorrect user ID or password message detected")
         return False
 
     if not wait_presence_soft(driver, By.XPATH, '//*[@id="idSIButton9"]'):
+        logger.warning("Continue button not found")
         return False
     if not click_if_present(driver, By.XPATH, '//*[@id="idSIButton9"]'):
         return False
+    
+    return True
 
     return True
 
 def wait_for_2fa_prompt(
     driver: WebDriver,
 ) -> Optional[tuple[TWO_FACTOR_TYPE, Optional[str]]]:
+    logger.debug(f"Waiting for 2FA prompt. Current URL: {driver.current_url}")
     wait_until_source_contains_any(
         driver,
         phrases=[
@@ -116,6 +129,7 @@ def wait_for_2fa_prompt(
     )
 
     if page_contains(driver, "trouble verifying your account"):
+        logger.debug("Detected 'trouble verifying your account' page - selecting 2FA method")
         proof1 = '//*[@id="idDiv_SAOTCS_Proofs"]/div[1]/div'
         proof2 = '//*[@id="idDiv_SAOTCS_Proofs"]/div[2]/div'
 
@@ -123,31 +137,25 @@ def wait_for_2fa_prompt(
             has1 = xpath_present(driver, By.XPATH, proof1)
             has2 = xpath_present(driver, By.XPATH, proof2)
 
-            # Exit when neither XPath is on the page
             if not (has1 or has2):
-                # print("breaking")
                 break
 
             if has1:
-                # print("found 1")
                 while True:
                     if page_contains(driver, "lightbox-cover disable-lightbox"):
-                        # print("1: loading wait")
                         time.sleep(0.5)
                     else:
                         break
-                # print("broke 1")
+                logger.debug("Clicking proof method 1")
                 click_if_present(driver, By.XPATH, proof1)
 
             if has2:
-                # print("found 2")
                 while True:
                     if page_contains(driver, "lightbox-cover disable-lightbox"):
-                        # print("2: loading wait")
                         time.sleep(0.5)
                     else:
                         break
-                # print("broke 2")
+                logger.debug("Clicking proof method 2")
                 click_if_present(driver, By.XPATH, proof2)
 
             time.sleep(0.5)
@@ -160,11 +168,14 @@ def wait_for_2fa_prompt(
         )
 
     if page_contains(driver, "Enter the code displayed"):
+        logger.debug("2FA method: Six digit code")
         return (TWO_FACTOR_TYPE.SIX_DIGIT_CODE, None)
     elif page_contains(driver, "Open your Authenticator"):
+        logger.debug("2FA method: Approve number")
         ctx_text = get_text_if_present(driver, By.ID, "idRichContext_DisplaySign")
         return (TWO_FACTOR_TYPE.APPROVE_NUMBER, ctx_text)
 
+    logger.warning(f"Could not detect 2FA prompt. Current URL: {driver.current_url}")
     return None
 
 def input_2fa_otp(driver: WebDriver, otp_code: str):

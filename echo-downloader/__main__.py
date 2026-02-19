@@ -270,12 +270,9 @@ def main(args: argparse.Namespace) -> int:
         for i in selection:
             video_target_collection.append(available_videos[i])
 
-    # Print an overview before starting to download if debugging
     logger.debug(f"Videos to download: {video_target_collection}")
 
-    # Download selected episodes
     for video in video_target_collection:
-        # If only printing to file, do so and skip downloading
         if "print_source" in args:
             if args.print_source:
                 logger.debug(
@@ -287,7 +284,6 @@ def main(args: argparse.Namespace) -> int:
                 logger.info(video.video_src_link)
             continue
 
-        # If a history file is specified, check if we've already listed it
         if args.history_file:
             try:
                 with open(args.history_file, "r") as f:
@@ -300,15 +296,12 @@ def main(args: argparse.Namespace) -> int:
                 logger.warning("No history file found at " + args.history_file)
                 logger.warning("Creating a new one.")
 
-            # Add it to the history file
             with open(args.history_file, "a") as f:
                 f.write(video.video_src_link + "\n")
 
-        # Before download, prepend the destination directory
         directory_prefix = args.destination
         logger.debug("Destination dir: " + directory_prefix)
         if not directory_prefix.endswith(os.sep):
-            # Add trailing (back)slash as the user might have forgotten it
             directory_prefix += os.sep
             logger.debug("Added missing slash: " + directory_prefix)
 
@@ -320,7 +313,6 @@ def main(args: argparse.Namespace) -> int:
             session,
         )
 
-    # Display hints if applicable
     if not args.disable_hints and HINT_LIST and video_target_collection:
         logger.info("")
         logger.info("-" * shutil.get_terminal_size().columns)
@@ -352,6 +344,11 @@ if __name__ == "__main__":
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
 
+    # Suppress noisy third-party library logs
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("selenium").setLevel(logging.WARNING)
+    logging.getLogger("selenium.webdriver").setLevel(logging.WARNING)
+    
     # Color the log level prefixes unless the output is INFO or is piped
     logging.addLevelName(logging.INFO, f"")
     logging.addLevelName(logging.ERROR, f"{Colors.ERROR}ERROR{Colors.ENDC} ")

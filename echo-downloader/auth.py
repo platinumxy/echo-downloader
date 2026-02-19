@@ -86,8 +86,6 @@ def load_session_cookies(session: requests.Session, filename: str) -> bool:
             logger.error(f"Failed to decrypt session file: {e}")
             return False
     
-    # Add cookies with proper domain scope
-    # cookies is a dict {name: value} from get_dict()
     for name, value in cookies.items():
         session.cookies.set(name, value, domain='echo360.org.uk')
     return True
@@ -95,12 +93,12 @@ def load_session_cookies(session: requests.Session, filename: str) -> bool:
 def auth_echo360(session: requests.Session, base_url: str) -> bool:
     if load_session_cookies(session, "echo360.cookies"):
         logger.debug("Loaded session cookies from file.")
-        # Verify if session is still valid by accessing base_url
         resp = session.get(base_url)
         if resp.url.startswith("https://echo360.org.uk"):
             logger.debug("Session cookies are still valid.")
             return True
         else:
+            logger.debug("Session cookies are stale, need to relogin.")
             print("Session cookies are stale, need to relogin.")
     
 
@@ -108,25 +106,30 @@ def auth_echo360(session: requests.Session, base_url: str) -> bool:
     if res is None: return False
 
     username, driver = res
-    logger.debug(f"Authenticated as: {username}")
     if not username:
         return False
     print("Authenticating with Echo360...")
     driver.get(base_url)
-    logger.debug(f"Navigated to base URL: {driver.current_url}")
-    # Extract appId from the login page
-    
     logger.debug(f"Redirected to [{driver.current_url}] for login")
     if "login.echo360.org.uk/login" not in driver.current_url:
-        logger.fatal(f"Unexpected login URL, expected Echo360 login page.")
+        logger.error(f"Unexpected login URL, expected Echo360 login page. Got: {driver.current_url}")
         return False
     
-    # write username+ed.ac.uk to <input name="email" class="email" id="email" value="" placeholder="Enter your Email Address" type="email" autocomplete="on">
-    driver.find_element(By.CLASS_NAME,"email").send_keys(username + "@ed.ac.uk")
-    # then click submit <button id="submitBtn" type="submit" value="submit" class="echo-btn primary submit-btn raspberry-btn">
-    driver.find_element(By.ID,"submitBtn").click()
+    time.sleep(2)
     
-    # Wait for SAML flow to complete and end up at base_url
+    email_to_submit = username if "@" in username else username + "@ed.ac.uk"
+    logger.debug(f"Attempting to submit email: {email_to_submit}")
+    
+    if not controller.send_keys_if_present(driver, By.ID, "email", email_to_submit, timeout=5):
+        logger.debug("Could not find email input by ID, trying by class name...")
+        if not controller.send_keys_if_present(driver, By.CLASS_NAME, "email", email_to_submit, timeout=5):
+            logger.error(f"Failed to find email input field")
+            return False
+    
+    if not controller.click_if_present(driver, By.ID, "submitBtn", timeout=5):
+        logger.error(f"Failed to find or click submit button")
+        return False
+    
     timeout = 30
     end_time = time.time() + timeout
     logger.debug(f"Waiting up to {timeout}s for SAML flow to complete...")
@@ -137,20 +140,24 @@ def auth_echo360(session: requests.Session, base_url: str) -> bool:
         if current_url != last_url:
             logger.debug(f"URL changed: {current_url}")
             last_url = current_url
+            
+            if "login.echo360.org.uk/login" in current_url and current_url != driver.current_url:
+                logger.warning(f"Redirected back to Echo360 login page - email submission may have failed")
+                continue
 
-        if current_url.startswith("https://echo360.org.uk"):
-            logger.debug(f"Reached base URL!")
+        if current_url.startswith("https://echo360.org.uk") and "login" not in current_url:
             break
         time.sleep(0.2)
-    
-    logger.debug(f"Final URL: {driver.current_url}")
-    logger.debug(f"Page title: {driver.title}")
+
+    if "login.echo360.org.uk/login" in driver.current_url:
+        logger.error(f"Failed to proceed past Echo360 login page. Final URL: {driver.current_url}")
+        return False
 
     if driver.current_url.startswith("https://echo360.org.uk"):
         print("Successfully logged into Echo360!")
         echo_cookies = controller.retrieve_cookie(driver, "https://echo360.org.uk")
         if echo_cookies is None:
-            logger.fatal("Could not retrieve Echo360 cookies after login.")
+            logger.error("Could not retrieve Echo360 cookies after login.")
             return False
 
         controller.copy_cookies_to_session(
@@ -159,7 +166,7 @@ def auth_echo360(session: requests.Session, base_url: str) -> bool:
         )
         save_session_cookies(session, "echo360.cookies")
         return True
-    logger.fatal("Could not log into Echo360.")
+    logger.error(f"Could not log into Echo360. Final URL was: {driver.current_url}")
     return False
 
 def login_to_ms() -> Optional[Tuple[str, controller.WebDriver]]:
@@ -167,11 +174,12 @@ def login_to_ms() -> Optional[Tuple[str, controller.WebDriver]]:
         res = perform_interactive_microsoft_login(logger)
         logger.debug(f"login_to_ms result: {res}")
         if res is None:
-            logger.fatal("Could not log into Microsoft (invalid credentials?).")
+            logger.error("Could not log into Microsoft (invalid credentials?).")
             return None
         username, driver = res
     except Exception as e:
-        logger.fatal("Failed to log into Microsoft: " + str(e))
+        logger.error("Failed to log into Microsoft: " + str(e))
+        logger.exception("Full traceback:")
         return None
 
     return (username, driver)
@@ -185,47 +193,52 @@ def perform_interactive_microsoft_login(logger: logging.Logger) -> Optional[Tupl
     try:
         controller.initialise_selenium(return_values, ready)
     except Exception as e:
-        logger.fatal(f"Failed to start browser: {e}")
+        logger.error(f"Failed to start browser: {e}")
         return None
 
     logger.debug("Prompting for EASE credentials")
     print(
         Style.BRIGHT
-        + "This script requires authentication. Please provide your EASE credentials.",
+        + "This script requires authentication. Please provide your University Microsoft credentials.",
         Style.RESET_ALL,
     )
-    time.sleep(0.2)  # wait for the Selenium thread to initialize so we dont overlap prints
-    username = input("EASE Username: ")
-    password = getpass.getpass("     Password: ")
+    time.sleep(0.2)
+    username =input("   Email: ")
+    password = getpass.getpass("Password: ")
 
     logger.debug("Waiting for Selenium initialisation to become ready")
     loader = Loader("Navigating to Microsoft login page...")
 
-    # Wait for initialise_selenium to signal readiness (should already be set by call)
     ready.wait()
     if "error" in return_values:
-        logger.fatal(f"Failed to start browser: {return_values["error"]}")
+        logger.error(f"Failed to start browser: {return_values['error']}")
         return None
 
     if "driver" not in return_values:
-        logger.fatal(f"Failed to start browser for unknown reason")
+        logger.error(f"Failed to start browser for unknown reason")
         return None
 
     driver = return_values["driver"]
+    logger.debug(f"Browser started, current URL: {driver.current_url}")
     loader.desc = "Sending credentials to Microsoft login page..."
     if not controller.submit_validate_username_password(
         driver, username, password
     ):
-        logger.fatal("Invalid credentials")
+        logger.error("Invalid credentials")
+        logger.debug(f"Current URL after failed credential submission: {driver.current_url}")
         loader.cancel("Invalid credentials")
         return None
 
+    logger.info(f"Credentials accepted")
+    logger.debug(f"Current URL after credential submission: {driver.current_url}")
     loader.stop()
     loader.desc = "Waiting for 2FA prompt..."
     prompt_type = controller.wait_for_2fa_prompt(driver)
 
     if not prompt_type:
-        logger.fatal("Browser behaved unexpectedly when waiting for 2FA")
+        logger.error("Browser behaved unexpectedly when waiting for 2FA")
+        logger.info(f"Current URL: {driver.current_url}")
+        logger.info(f"Page title: {driver.title}")
         loader.cancel("Failed for unknown reason.")
         return None
 
@@ -234,9 +247,6 @@ def perform_interactive_microsoft_login(logger: logging.Logger) -> Optional[Tupl
     if prompt_type[0] == controller.TWO_FACTOR_TYPE.APPROVE_NUMBER:
         logger.debug("Prompting user to approve a number")
         print(f"Please use your app to approve this sign-in request: {prompt_type[1]}")
-        #print(f"Please use your app to approve this sign-in request: {prompt_type[1]}")
-        
-        #loader = Loader("Waiting for Microsoft to accept the 2FA auth...")
 
     elif prompt_type[0] == controller.TWO_FACTOR_TYPE.SIX_DIGIT_CODE:
         logger.debug("Prompting user for 6-digit code")
@@ -245,10 +255,12 @@ def perform_interactive_microsoft_login(logger: logging.Logger) -> Optional[Tupl
         controller.input_2fa_otp(driver, otp)
 
     if not controller.wait_for_2fa_completion(driver):
-        logger.fatal("2FA completion timeout failed")
+        logger.error("2FA completion timeout failed")
+        logger.info(f"Current URL: {driver.current_url}")
         loader.cancel("2FA failed!")
         return None
 
+    logger.info(f"2FA completed, current URL: {driver.current_url}")
     name = controller.retrieve_logged_in_name(driver)
     loader.stop(f"Logged in as {name}!")
 
