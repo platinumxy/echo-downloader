@@ -10,13 +10,15 @@ Many thanks to Yuto for their work on the project before the auth changes!
 ## Requirements:
 
  * `requests`
- * `selenium` 
+ * `selenium`
+ * `cryptography`
+ * `colorama`
  * `tqdm` (optional, gives better progressbar)
 
 
 Install with:
 ```bash
-pip3 install requests tqdm selenium
+pip3 install requests tqdm selenium cryptography colorama
 ```
 
 # FAQ
