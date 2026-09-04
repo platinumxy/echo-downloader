@@ -10,7 +10,7 @@ Many thanks to Yuto for their work on the project before the auth changes!
 ## Requirements:
 
  * `requests`
- * `selenium`
+ * `uoe_ms_auth`
  * `cryptography`
  * `colorama`
  * `tqdm` (optional, gives better progressbar)
@@ -18,7 +18,7 @@ Many thanks to Yuto for their work on the project before the auth changes!
 
 Install with:
 ```bash
-pip3 install requests tqdm selenium cryptography colorama
+pip3 install requests tqdm uoe_ms_auth cryptography colorama
 ```
 
 # FAQ

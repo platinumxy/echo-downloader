@@ -8,6 +8,7 @@ import os
 import getpass
 import random
 import re
+import importlib.util
 from typing import Optional, TypedDict, List
 import requests
 
@@ -224,6 +225,13 @@ def main(args: argparse.Namespace) -> int:
             logger.warning("Could not check for updates.")
     else:
         logger.info("Skipping update check.")
+
+    if importlib.util.find_spec("uoe_ms_auth") is None:
+        logger.error(
+            "Missing dependency 'uoe_ms_auth'. Install it with: "
+            f"{sys.executable} -m pip install uoe_ms_auth"
+        )
+        return 1
 
     video_target_collection: List[TargetVideo] = []
 
